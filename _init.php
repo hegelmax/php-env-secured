@@ -1,6 +1,6 @@
 <?php if (session_status() === PHP_SESSION_NONE) {session_start();}
 
-const CONFIG_ALLOW_EDIT = true;
+//const CONFIG_ALLOW_EDIT = true;
 //const CONFIG_SCHEMA = 'default';
 
 if (file_exists(__DIR__ . '/libs/cls.EnvSecuredCrypto.php'))	require_once __DIR__ . '/libs/cls.EnvSecuredCrypto.php';

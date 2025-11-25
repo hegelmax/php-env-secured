@@ -1,6 +1,6 @@
-# 📦 EnvSecuredConfig — Encrypted Configuration Manager for PHP
+# 📦 EnvSecured — Encrypted Configuration Manager for PHP
 
-[EnvSecuredConfig](https://github.com/hegelmax/php-env-secured) is a lightweight, secure, and self-contained PHP module for storing sensitive configuration values (API keys, database credentials, tokens) in an encrypted form.
+[EnvSecured](https://github.com/hegelmax/php-env-secured) is a lightweight, secure, and self-contained PHP module for storing sensitive configuration values (API keys, database credentials, tokens) in an encrypted form.
 
 It provides:
 
@@ -20,7 +20,7 @@ It provides:
 env_secured/
 ├── _init.php                    → Bootloader (entry point)
 ├── libs/
-│   ├── cls.EnvSecuredConfig.php → Main config manager
+│   ├── cls.EnvSecured.php       → Main config manager
 │   ├── cls.EnvSecuredCrypto.php → Encryption engine
 │   └── html/
 │       ├── page_form.php        → UI template: config editor
@@ -39,7 +39,7 @@ Both `configs/` and `keys/` directories are created automatically on first use i
 
 # 🚀 Quick Start
 
-## 1. Include the EnvSecuredConfig module
+## 1. Include the EnvSecured module
 
 Place the `env_secured/` directory anywhere inside your project and add:
 
@@ -67,7 +67,7 @@ Click:
 
 # 🔒 Encryption Model
 
-EnvSecuredConfig uses:
+EnvSecured uses:
 
 - `secret.key` — auto-generated 256-bit master key
 - `sodium.key` — additional internal key
@@ -99,7 +99,7 @@ cipher      = base64( nonce | secretbox(plaintext, nonce, finalKey) )
 
 # 💻 JSON Import / Export
 
-EnvSecuredConfig supports configuration migration between environments:
+EnvSecured supports configuration migration between environments:
 
 ### Export (Download JSON)
 
@@ -128,7 +128,7 @@ echo $env['DB_HOST'];
 echo $env['API_KEY'];
 
 // Or via helper
-echo EnvSecuredConfig::get('DB_HOST');
+echo EnvSecured::get('DB_HOST');
 ```
 
 ---
@@ -177,4 +177,4 @@ MIT License. Free for commercial use.
 
 ---
 
-© 2025 EnvSecuredConfig Module
+© 2025 EnvSecured Module

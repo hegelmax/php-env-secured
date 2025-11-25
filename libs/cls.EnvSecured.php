@@ -1,6 +1,6 @@
 <?php
 if (class_exists('EnvSecuredCrypto')) {
-	class EnvSecuredConfig {
+	class EnvSecured {
 		protected string $rootDir;
 		protected string $configsPath;
 		protected string $configFilePath;
@@ -51,7 +51,7 @@ if (class_exists('EnvSecuredCrypto')) {
 
 		// -------------------- Getter --------------------
 		// Using:
-		// $host = EnvSecuredConfig::get('DB_HOST');
+		// $host = EnvSecured::get('DB_HOST');
 		public static function get(string $key = null) {
 			if ($key === null) return $GLOBALS['SRVENV'] ?? [];
 			return $GLOBALS['SRVENV'][$key] ?? null;

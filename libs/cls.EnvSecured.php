@@ -1,9 +1,10 @@
 <?php
 if (class_exists('EnvSecuredCrypto')) {
 	class EnvSecured {
-		protected string $rootDir;
-		protected string $configsPath;
-		protected string $configFilePath;
+		protected bool		$allowSession;
+		protected string	$rootDir;
+		protected string	$configsPath;
+		protected string	$configFilePath;
 		protected $EnvSecuredCrypto;
 		
 		public function __construct(string $rootDir) {
@@ -13,6 +14,10 @@ if (class_exists('EnvSecuredCrypto')) {
 				$this->ensureDir($this->configsPath);
 				$this->EnvSecuredCrypto = new EnvSecuredCrypto($rootDir);
 				$this->setEncConfigPath();
+				
+				// Check session
+				$this->allowSession = defined('ENV_SECURED_CONFIG_ALLOW_SESSION') ? (bool)ENV_SECURED_CONFIG_ALLOW_SESSION : false;
+				if ($this->allowSession && session_status() === PHP_SESSION_NONE) {session_start();}
 			} else {
 				echo "RootDir is not exist: " . $rootDir . PHP_EOL;
 				exit;
@@ -31,7 +36,7 @@ if (class_exists('EnvSecuredCrypto')) {
 			
 			// GET: if the config already exists
 			if (is_file($this->configFilePath)) {
-				$allowEdit = defined('CONFIG_ALLOW_EDIT') ? (bool)CONFIG_ALLOW_EDIT : false;
+				$allowEdit = defined('ENV_SECURED_CONFIG_ALLOW_EDIT') ? (bool)ENV_SECURED_CONFIG_ALLOW_EDIT : false;
 
 				// Mode - show form with existing config (editing)
 				if ($allowEdit && !empty($_GET['set_config'])) {
@@ -61,7 +66,7 @@ if (class_exists('EnvSecuredCrypto')) {
 
 		// * Path to the encrypted config *
 		private function setEncConfigPath(): void {
-			$prefix = defined('CONFIG_SCHEMA') ? (CONFIG_SCHEMA . '.') : '';
+			$prefix = defined('ENV_SECURED_CONFIG_SCHEMA') ? (ENV_SECURED_CONFIG_SCHEMA . '.') : '';
 			$this->configFilePath = $this->configsPath . DIRECTORY_SEPARATOR . $prefix . 'config.enc';
 		}
 
@@ -191,7 +196,7 @@ if (class_exists('EnvSecuredCrypto')) {
 						throw new RuntimeException('JSON encode failed');
 					}
 
-					$filename = (defined('CONFIG_SCHEMA') ? CONFIG_SCHEMA . '.' : '') . 'config.json';
+					$filename = (defined('ENV_SECURED_CONFIG_SCHEMA') ? ENV_SECURED_CONFIG_SCHEMA . '.' : '') . 'config.json';
 
 					// remove all buffers to return a clean file
 					while (ob_get_level()) {
@@ -220,16 +225,17 @@ if (class_exists('EnvSecuredCrypto')) {
 
 		// -------------------- Session / loading existing --------------------
 
-		private function setSessionVar(): void {
+		private function setSessionVar(): array {
 			try {
 				$env = $this->encLoadArray();
-				$_SESSION['ENV']	= $env;
-				$GLOBALS['SRVENV']	= $env;
+				$GLOBALS['SRVENV'] = $env;
+				if ($this->allowSession) $_SESSION['ENV'] = $env;
 			} catch (Throwable $e) {
 				http_response_code(500);
 				$this->renderPageForm('Read/decrypt error: ' . $e->getMessage());
 				exit;
 			}
+			return $env;
 		}
 
 		private function loadFromFile(): void {
@@ -237,9 +243,7 @@ if (class_exists('EnvSecuredCrypto')) {
 			$error		= null;
 
 			try {
-				$data = $this->encLoadArray();
-				$_SESSION['ENV']	= $data;
-				$GLOBALS['SRVENV']	= $data;
+				$data = $this->setSessionVar();
 
 				foreach ($data as $k => $v) {
 					if ($k === 'saved_at') {

@@ -60,7 +60,7 @@ if (class_exists('EnvSecuredCrypto')) {
 		// -------------------- Getter --------------------
 		// Using:
 		// $host = EnvSecured::get('DB_HOST');
-		public static function get(string $key = null) {
+		public static function get(?string $key = null) {
 			if ($key === null) return $GLOBALS['SRVENV'] ?? [];
 			return $GLOBALS['SRVENV'][$key] ?? null;
 		}
@@ -278,19 +278,38 @@ if (class_exists('EnvSecuredCrypto')) {
 
 		// -------------------- Page Rendering --------------------
 
+		private function getDefaultPrefill(): array {
+			if (defined('ENV_SECURED_DEFAULTS') && is_array(ENV_SECURED_DEFAULTS)) {
+
+				// нормализация формата
+				$normalized = [];
+				foreach (ENV_SECURED_DEFAULTS as $item) {
+					if (!is_array($item)) continue;
+					$key = $item['key'] ?? '';
+					$value = $item['value'] ?? '';
+					if ($key !== '') {
+						$normalized[] = ['key' => $key, 'value' => $value];
+					}
+				}
+
+				if ($normalized) return $normalized;
+			}
+
+			// fallback → старые дефолты
+			return [
+				['key' => 'DB_HOST',        'value' => ''],
+				['key' => 'DB_NAME',        'value' => ''],
+				['key' => 'DB_USER',        'value' => ''],
+				['key' => 'DB_PASSWORD',    'value' => ''],
+				['key' => 'YOUR_API_TOKEN', 'value' => ''],
+			];
+		}
+
 		private function renderPageForm( ?string $error = null, array $prefill = [], ?string $success = null ): void {
 			$successHtml	= $success ? '<div class="msg msg-success">' . htmlspecialchars($success, ENT_QUOTES, 'UTF-8') . '</div>' : '';
 			$errorHtml		= $error ? '<div class="msg msg-error">' . htmlspecialchars($error, ENT_QUOTES, 'UTF-8') . '</div>' : '';
+			$prefill		= $prefill ?: $this->getDefaultPrefill();
 
-			if (!$prefill) {
-				$prefill = [
-					['key' => 'DB_HOST',        'value' => ''],
-					['key' => 'DB_NAME',        'value' => ''],
-					['key' => 'DB_USER',        'value' => ''],
-					['key' => 'DB_PASSWORD',    'value' => ''],
-					['key' => 'YOUR_API_TOKEN', 'value' => ''],
-				];
-			}
 
 			$self = htmlspecialchars($_SERVER['PHP_SELF'] ?? '/env_secured/_init.php', ENT_QUOTES, 'UTF-8');
 

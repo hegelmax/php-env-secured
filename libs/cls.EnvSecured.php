@@ -2,6 +2,7 @@
 if (class_exists('EnvSecuredCrypto')) {
 	class EnvSecured {
 		protected bool		$allowSession;
+		protected bool		$defineConst;
 		protected string	$rootDir;
 		protected string	$configsPath;
 		protected string	$configFilePath;
@@ -18,6 +19,8 @@ if (class_exists('EnvSecuredCrypto')) {
 				// Check session
 				$this->allowSession = defined('ENV_SECURED_CONFIG_ALLOW_SESSION') ? (bool)ENV_SECURED_CONFIG_ALLOW_SESSION : false;
 				if ($this->allowSession && session_status() === PHP_SESSION_NONE) {session_start();}
+				
+				$this->defineConst = defined('ENV_SECURED_CONFIG_DEFINE_CONST') ? (bool)ENV_SECURED_CONFIG_DEFINE_CONST : true;
 			} else {
 				echo "RootDir is not exist: " . $rootDir . PHP_EOL;
 				exit;
@@ -230,6 +233,17 @@ if (class_exists('EnvSecuredCrypto')) {
 				$env = $this->encLoadArray();
 				$GLOBALS['SRVENV'] = $env;
 				if ($this->allowSession) $_SESSION['ENV'] = $env;
+				if ($this->defineConst) {
+					// Also define constants automatically
+					foreach ($env as $k => $v) {
+						if (!defined($k)) {
+							// Valid PHP constant name check (OPTIONAL, but safe)
+							if (preg_match('/^[A-Z_][A-Z0-9_]*$/', $k)) {
+								define($k, $v);
+							}
+						}
+					}
+				}
 			} catch (Throwable $e) {
 				http_response_code(500);
 				$this->renderPageForm('Read/decrypt error: ' . $e->getMessage());

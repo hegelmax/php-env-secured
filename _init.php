@@ -1,7 +1,8 @@
 <?php
-//const ENV_SECURED_CONFIG_SCHEMA			= 'default';
-//const ENV_SECURED_CONFIG_ALLOW_EDIT		= true;
-//const ENV_SECURED_CONFIG_ALLOW_SESSION	= true;
+//const ENV_SECURED_CONFIG_SCHEMA			= 'your_schema';	// default = default
+//const ENV_SECURED_CONFIG_ALLOW_EDIT		= true;				// default = false
+//const ENV_SECURED_CONFIG_ALLOW_SESSION	= true;				// default = false
+//const ENV_SECURED_CONFIG_DEFINE_CONST		= false;			// default = true
 
 if (file_exists(__DIR__ . '/libs/cls.EnvSecuredCrypto.php'))	require_once __DIR__ . '/libs/cls.EnvSecuredCrypto.php';
 if (file_exists(__DIR__ . '/libs/cls.EnvSecured.php'))			require_once __DIR__ . '/libs/cls.EnvSecured.php';

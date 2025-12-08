@@ -13,6 +13,7 @@ class EnvSecured {
 	protected $EnvSecuredCrypto;
 	
 	public function __construct(string $rootDir) {
+		$this->ensureDir($rootDir);
 		if(is_dir($rootDir)) {
 			$this->rootDir = $rootDir;
 			$this->configsPath = $this->rootDir . DIRECTORY_SEPARATOR . 'configs';

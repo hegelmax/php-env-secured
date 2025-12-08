@@ -3,6 +3,8 @@
   "description": "Encrypted configuration manager for PHP (EnvSecured).",
   "type": "library",
   "license": "MIT",
+  "minimum-stability": "dev",
+  "prefer-stable": true,
   "autoload": {
     "classmap": [
       "libs/"

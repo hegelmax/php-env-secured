@@ -1,4 +1,8 @@
 <?php
+namespace EnvSecured;
+
+use RuntimeException;
+
 class EnvSecuredCrypto {
 	protected string $rootDir;
 	protected string $keysPath;

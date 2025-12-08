@@ -1,16 +1,22 @@
 # 📦 EnvSecured — Encrypted Configuration Manager for PHP
 
-[EnvSecured](https://github.com/hegelmax/php-env-secured) is a lightweight, secure, and self-contained PHP module for storing sensitive configuration values (API keys, database credentials, tokens) in an encrypted form.
+[EnvSecured](https://github.com/hegelmax/php-env-secured) is a lightweight, secure, and self-contained PHP module for storing sensitive configuration values (API keys, database credentials, tokens, secrets) in an **encrypted file** and provides a clean interface to access them in runtime.
 
-It provides:
+---
+
+# ⭐ Key Features
 
 - 🔒 **Encrypted config file** (`config.enc`)
 - 🌐 **Browser-based UI** for editing settings
 - 📤 **JSON export** (download)
 - 📥 **JSON import** (load file into form)
-- 🔑 **Automatic key generation**
+- 🔑 **Automatic key generation** (`keys/*.key`)
+- 🧬 **Server-bound encryption** (fingerprint-based)
 - 🧩 **Zero global functions** — everything wrapped in PHP classes
 - 🚀 **Drop-in integration** into any project
+- ⚙️ Can be used:
+  - **with Composer**
+  - **without Composer**
 
 ---
 
@@ -20,8 +26,8 @@ It provides:
 env_secured/
 ├── _init.php                    → Bootloader (entry point)
 ├── libs/
-│   ├── cls.EnvSecured.php       → Main config manager
-│   ├── cls.EnvSecuredCrypto.php → Encryption engine
+│   ├── EnvSecured.php           → Main config manager
+│   ├── EnvSecuredCrypto.php     → Encryption engine
 │   └── html/
 │       ├── page_form.php        → UI template: config editor
 │       ├── page_success.php     → UI template: success page
@@ -37,31 +43,85 @@ Both `configs/` and `keys/` directories are created automatically on first use i
 
 ---
 
-# 🚀 Quick Start
+# 📦 Installation
 
-## 1. Include the EnvSecured module
+## Option A — Composer (recommended)
 
-Place the `env_secured/` directory anywhere inside your project and add:
+```bash
+composer require hegelmax/env-secured
+```
+
+## Option B — No Composer
+
+Download the directory:
+
+```
+env_secured/
+```
+
+and place it anywhere in your project.
+
+---
+
+# 🚀 Quick Start (Composer version)
 
 ```php
-require_once __DIR__ . '/env_secured/_init.php';
+require __DIR__ . '/vendor/autoload.php';
+
+use EnvSecured\EnvSecured;
+
+$envRoot = __DIR__ . '/env'; // Directory for configs/ and keys/
+
+$env = new EnvSecured($envRoot);
+$env->run();
+
+// Retrieve configuration
+$config = EnvSecured::get();          // full array
+$dbHost = EnvSecured::get('DB_HOST'); // single value
 ```
 
-## 2. First run — create encrypted config
+---
 
-Open in browser:
+# 🚀 Quick Start (No Composer)
+
+```php
+require __DIR__ . '/env_secured/init.php';
+```
+
+Then read configuration via:
+
+```php
+$env = EnvSecured::get();  // array
+echo EnvSecured::get('API_URL'); 
+```
+
+---
+
+# 🖥️ First Run — Creating Config
+
+When no encrypted config exists, opening your init script in a browser shows the Config Editor UI:
 
 ```
-https://your-site.com/env_secured/_init.php
+/env_secured/init.php
 ```
 
-You will see a UI for entering configuration variables.
+UI allows:
 
-Click:
+### ✔ Editing KEY=value rows  
+### ✔ Saving encrypted config (`config.enc`)
+### ✔ Downloading JSON  
+### ✔ Loading JSON into form  
 
-- **Save (encrypted)** — creates or updates `configs/config.enc`
-- **Download JSON** — exports settings for migration
-- **Load JSON** — imports exported config into the form (in browser only)
+Folders created automatically:
+
+```
+env/
+  configs/
+    config.enc
+  keys/
+    sodium.key
+    secret.key
+```
 
 ---
 
@@ -69,12 +129,12 @@ Click:
 
 EnvSecured uses:
 
-- `secret.key` — auto-generated 256-bit master key
-- `sodium.key` — additional internal key
-- A server fingerprint (host + project path)
-- `sodium_crypto_secretbox()` with XSalsa20-Poly1305
-- Auto-generated nonce per message
-- Base64-encoded cipher structure
+- 256-bit `sodium.key`
+- 256-bit `secret.key`
+- machine + project fingerprint
+- XSalsa20-Poly1305 (libsodium)
+- unique nonce per encryption
+- atomic writes to prevent corruption
 
 Conceptually:
 
@@ -97,9 +157,75 @@ cipher      = base64( nonce | secretbox(plaintext, nonce, finalKey) )
 
 ---
 
+# ⚙️ Configuration in Code
+
+Once EnvSecured loads the config:
+
+### 1️⃣ Array access
+
+```php
+$config = EnvSecured::get();
+echo $config['DB_HOST'];
+```
+
+### 2️⃣ Single value
+
+```php
+echo EnvSecured::get('API_TOKEN');
+```
+
+### 3️⃣ Global constants
+
+If constant autodefine is enabled:
+
+```php
+echo API_TOKEN;
+```
+
+Enable via:
+
+```php
+const ENV_SECURED_CONFIG_DEFINE_CONST = true;
+```
+
+---
+
+# 🛠️ Optional Constants
+
+Place them **before** calling EnvSecured.
+
+```php
+const ENV_SECURED_CONFIG_SCHEMA       = 'prod';
+const ENV_SECURED_CONFIG_ALLOW_EDIT   = false;
+const ENV_SECURED_CONFIG_ALLOW_SESSION = true;
+const ENV_SECURED_CONFIG_DEFINE_CONST = true;
+
+const ENV_SECURED_DEFAULTS = [
+    ['key' => 'DB_HOST', 'value' => 'localhost'],
+    ['key' => 'API_URL', 'value' => 'https://localhost/api'],
+];
+```
+
+---
+
+# 🔧 Requirements
+
+- PHP **8.1+**
+- `ext-sodium` enabled
+- Writable directory for:
+  - `configs/`
+  - `keys/`
+
+---
+
 # 💻 JSON Import / Export
 
-EnvSecured supports configuration migration between environments:
+EnvSecured supports configuration migration via JSON file, that can be useful for:
+
+- migrations
+- backups
+- moving configs between servers
+- Dev → Prod workflows
 
 ### Export (Download JSON)
 
@@ -110,34 +236,6 @@ Downloads a readable `.json` file containing all config values.
 Loads a `.json` file directly in the browser and fills the config form.
 
 > No data is sent to the server until **Save (encrypted)** is pressed.
-
----
-
-# 🧩 Using Config in Your Application
-
-After initialization:
-
-```php
-require_once __DIR__ . '/env_secured/_init.php';
-
-// Full array
-$env = $GLOBALS['SRVENV'];
-
-// Direct access
-echo $env['DB_HOST'];
-echo $env['API_KEY'];
-
-// Or via helper
-echo EnvSecured::get('DB_HOST');
-```
-
----
-
-# 🔧 Requirements
-
-- PHP 8.1+
-- `ext-sodium` enabled
-- Writable `env_secured/configs/` and `env_secured/keys/` directories
 
 ---
 
@@ -177,4 +275,4 @@ MIT License. Free for commercial use.
 
 ---
 
-© 2025 EnvSecured Module
+© 2025 Maxim Hegel

@@ -1,0 +1,67 @@
+<?php
+
+/**
+ * EnvSecured Init Sample (Non-Composer version)
+ *
+ * For projects that include env_secured/ manually.
+ */
+
+// Example of custom constants (optional):
+//	const ENV_SECURED_CONFIG_SCHEMA			= 'your_schema';	// default = default
+//	const ENV_SECURED_CONFIG_ALLOW_EDIT		= true;				// default = false
+//	const ENV_SECURED_CONFIG_ALLOW_SESSION	= true;				// default = false
+//	const ENV_SECURED_CONFIG_DEFINE_CONST	= false;			// default = true
+//	const ENV_SECURED_DEFAULTS				= [
+//			['key' => 'DB_HOST'				,'value' => 'localhost'],
+//			['key' => 'API_KEY'				,'value' => '**API_KEY**'],
+//			['key' => 'API_URL'				,'value' => 'https://dev.local/api'],
+//			['key' => 'TELEGRAM_BOT_TOKEN'	,'value' => '**TELEGRAM_BOT_TOKEN**'],
+//			['key' => 'REDIS_URL'			,'value' => 'redis://127.0.0.1'],
+//		];
+
+// Path where configs/, keys/ and cache/ will be created.
+// Recommended: use a non-public directory (outside /public)
+$rootDir	= __DIR__;
+
+$pathCrypto	= __DIR__ . '/libs/EnvSecuredCrypto.php';
+$pathEnv	= __DIR__ . '/libs/EnvSecured.php';
+
+try {
+	if (!file_exists($pathCrypto))
+		throw new \RuntimeException("[EnvSecuredCrypto] file not found: $pathCrypto");
+	
+	require_once $pathCrypto;
+	
+	if (!class_exists('\EnvSecured\EnvSecuredCrypto'))
+		throw new \RuntimeException("[EnvSecuredCrypto] class not loaded");
+	
+	if (!file_exists($pathEnv))
+		throw new \RuntimeException("[EnvSecured] file not found: $pathEnv");
+	
+	require_once $pathEnv;
+	
+	if (!class_exists('\EnvSecured\EnvSecured'))
+		throw new \RuntimeException("[EnvSecured] class not loaded");
+	
+	if (!extension_loaded('sodium'))
+		throw new \RuntimeException("PHP extension 'sodium' is required.");
+	
+	$env = new \EnvSecured\EnvSecured($rootDir);
+	$env->run();
+} catch (\Throwable $e) {
+	http_response_code(500);
+	header('Content-Type: application/json; charset=utf-8');
+	
+	echo json_encode([
+		'error'   => 'EnvSecured initialization error',
+		'message' => $e->getMessage(),
+	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	
+	exit;
+}
+
+// The configuration is now available via:
+$config = \EnvSecured\EnvSecured::get();			// the entire array
+$dbHost = \EnvSecured\EnvSecured::get('DB_HOST');	// a single value
+$apiKey = API_KEY; // A global constant can be used if the flag ENV_SECURED_CONFIG_DEFINE_CONST is true.
+?>

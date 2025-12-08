@@ -1,0 +1,42 @@
+<?php
+
+/**
+ * EnvSecured Init Sample (Composer version)
+ *
+ * Requires:
+ *   composer require hegelmax/env-secured
+ */
+
+// Example of custom constants (optional):
+//	const ENV_SECURED_CONFIG_SCHEMA			= 'your_schema';	// default = default
+//	const ENV_SECURED_CONFIG_ALLOW_EDIT		= true;				// default = false
+//	const ENV_SECURED_CONFIG_ALLOW_SESSION	= true;				// default = false
+//	const ENV_SECURED_CONFIG_DEFINE_CONST	= false;			// default = true
+//	const ENV_SECURED_DEFAULTS				= [
+//			['key' => 'DB_HOST'				,'value' => 'localhost'],
+//			['key' => 'API_KEY'				,'value' => '**API_KEY**'],
+//			['key' => 'API_URL'				,'value' => 'https://dev.local/api'],
+//			['key' => 'TELEGRAM_BOT_TOKEN'	,'value' => '**TELEGRAM_BOT_TOKEN**'],
+//			['key' => 'REDIS_URL'			,'value' => 'redis://127.0.0.1'],
+//		];
+
+require __DIR__ . '/vendor/autoload.php';
+
+use EnvSecured\EnvSecured;
+
+// Path where configs/, keys/ and cache/ will be created.
+// Recommended: use a non-public directory (outside /public)
+$envRoot = __DIR__ . '/env';
+
+// Initialize EnvSecured
+$env = new EnvSecured($envRoot);
+
+// Execute configuration loading + UI handling
+$env->run();
+
+// Example:
+// The configuration is now available via:
+$config = EnvSecured::get();			// Retrieve all environment variables
+$dbHost = EnvSecured::get('DB_HOST');	// a single value
+$apiKey = API_KEY;						// A global constant can be used if the flag ENV_SECURED_CONFIG_DEFINE_CONST is true.
+echo $SRVENV['API_URL'];				// Get value from Global vars

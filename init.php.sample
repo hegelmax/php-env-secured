@@ -7,11 +7,17 @@
  */
 
 // Example of custom constants (optional):
-//	const ENV_SECURED_CONFIG_SCHEMA			= 'your_schema';	// default = default
-//	const ENV_SECURED_CONFIG_ALLOW_EDIT		= true;				// default = false
-//	const ENV_SECURED_CONFIG_ALLOW_SESSION	= true;				// default = false
-//	const ENV_SECURED_CONFIG_DEFINE_CONST	= false;			// default = true
-//	const ENV_SECURED_DEFAULTS				= [
+//	const ENV_SECURED_CONFIG_SCHEMA				= 'your_schema';	// legacy file prefix, not Studio service/environment
+//	const ENV_SECURED_CONFIG_ALLOW_EDIT			= true;				// default = false
+//	const ENV_SECURED_CONFIG_ALLOW_SESSION		= true;				// default = false
+//	const ENV_SECURED_CONFIG_DEFINE_CONST		= false;			// default = true
+//	const ENV_SECURED_STORAGE_FORMAT			= 'studio';			// studio (default for new configs) | legacy
+//	const ENV_SECURED_STUDIO_PASSWORD			= 'change-me';		// optional; otherwise POST/env/local cache
+//	const ENV_SECURED_STUDIO_FILE				= __DIR__ . '/configs/config.envs';
+//	const ENV_SECURED_STUDIO_ENCRYPTION_MODE	= 'WholeJson';		// Open | SecretsOnly | AllValues | WholeJson
+//	const ENV_SECURED_STUDIO_SERVICE			= 'project';			// optional Studio service scope
+//	const ENV_SECURED_STUDIO_ENVIRONMENT		= 'prod';			// optional Studio environment scope
+//	const ENV_SECURED_DEFAULTS					= [
 //			['key' => 'DB_HOST'				,'value' => 'localhost'],
 //			['key' => 'API_KEY'				,'value' => '**API_KEY**'],
 //			['key' => 'API_URL'				,'value' => 'https://dev.local/api'],
@@ -19,7 +25,7 @@
 //			['key' => 'REDIS_URL'			,'value' => 'redis://127.0.0.1'],
 //		];
 
-// Path where configs/, keys/ and cache/ will be created.
+// Path where configs/ and keys/ will be created.
 // Recommended: use a non-public directory (outside /public)
 $rootDir	= __DIR__;
 
@@ -45,16 +51,19 @@ try {
 	
 	if (!extension_loaded('sodium'))
 		throw new \RuntimeException("PHP extension 'sodium' is required.");
+	if (!extension_loaded('openssl'))
+		throw new \RuntimeException("PHP extension 'openssl' is required for EnvSecured Studio vault support.");
 	
 	$env = new \EnvSecured\EnvSecured($rootDir);
 	$env->run();
 } catch (\Throwable $e) {
+	error_log('EnvSecured initialization error: ' . $e->getMessage());
 	http_response_code(500);
 	header('Content-Type: application/json; charset=utf-8');
 	
 	echo json_encode([
 		'error'   => 'EnvSecured initialization error',
-		'message' => $e->getMessage(),
+		'message' => 'Configuration initialization failed.',
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	
 	exit;

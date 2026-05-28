@@ -17,11 +17,11 @@ class EnvSecuredCrypto {
 				$this->keySodium	= $this->getOrCreate256bitKey('sodium');
 				$this->keySecret	= $this->getOrCreate256bitKey('secret');
 			} catch (\RuntimeException $e) {
-				echo "Error: " . $e->getMessage() . PHP_EOL;
+				echo "Configuration error." . PHP_EOL;
 				exit;
 			}
 		} else {
-			echo "RootDir is not exist: " . $rootDir . PHP_EOL;
+			echo "Configuration directory error." . PHP_EOL;
 			exit;
 		}
 	}
@@ -56,9 +56,35 @@ class EnvSecuredCrypto {
 		return base64_encode($nonce . $cipher);
 	}
 
+	public function encryptBound(string $plaintext, string $context): string|false {
+		$keyHex = $this->deriveFinalKey($context);
+		$keyBin = sodium_hex2bin($keyHex);
+
+		$nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+		$cipher = sodium_crypto_secretbox($plaintext, $nonce, $keyBin);
+
+		return base64_encode($nonce . $cipher);
+	}
+
 	// *Decryption*
 	public function decrypt(string $b64): string|false {
 		$keyHex = $this->deriveFinalKey();
+		$keyBin = sodium_hex2bin($keyHex);
+
+		$bin = base64_decode($b64, true);
+		if ($bin === false) return false;
+
+		$nonceSize = SODIUM_CRYPTO_SECRETBOX_NONCEBYTES;
+		if (strlen($bin) < $nonceSize) return false;
+
+		$nonce = substr($bin, 0, $nonceSize);
+		$cipher = substr($bin, $nonceSize);
+
+		return sodium_crypto_secretbox_open($cipher, $nonce, $keyBin);
+	}
+
+	public function decryptBound(string $b64, string $context): string|false {
+		$keyHex = $this->deriveFinalKey($context);
 		$keyBin = sodium_hex2bin($keyHex);
 
 		$bin = base64_decode($b64, true);
@@ -77,9 +103,12 @@ class EnvSecuredCrypto {
 	// INTERNAL METERS (NOT CALLED OUTSIDE)
 	// ============================================================
 
-	private function deriveFinalKey(): string {
+	private function deriveFinalKey(string $context = ''): string {
 		$fingerprint	= $this->fingerprint();
 		$raw			= $fingerprint . '|' . $this->keySodium;
+		if ($context !== '') {
+			$raw .= '|' . $context;
+		}
 
 		return sodium_bin2hex(
 			sodium_crypto_generichash($raw, '', 32)
@@ -104,8 +133,11 @@ class EnvSecuredCrypto {
 		
 		if (is_file($file_path)) {
 			$content = trim(@file_get_contents($file_path));
-			if ($content !== '') {
+			if ($content !== '' && strlen($content) === 64 && ctype_xdigit($content)) {
 				return $content;
+			}
+			if ($content !== '') {
+				throw new \RuntimeException("Invalid key file format.");
 			}
 		}
 

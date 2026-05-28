@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>Encrypted config editor</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <style>
+    <style nonce="<?= htmlspecialchars((string)($vars['cspNonce'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
       body {
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
         margin: 2rem;
@@ -38,7 +38,7 @@
   <body>
     <div class="wrap">
       <h1>Script error</h1>
-      <?= ($vars['error'] ?? '') ?>
+      <div class="msg msg-error"><?= htmlspecialchars((string)($vars['error'] ?? ''), ENT_QUOTES, 'UTF-8') ?></div>
     </div>
   </body>
 </html>

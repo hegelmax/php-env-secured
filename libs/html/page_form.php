@@ -4,14 +4,14 @@
     <meta charset="utf-8">
     <title>Encrypted config editor</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <style>
+    <style nonce="<?= htmlspecialchars((string)($vars['cspNonce'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
       body {
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
         margin: 2rem;
         background: #f5f5f7;
       }
       .wrap {
-        max-width: 800px;
+        max-width: 980px;
         margin: 0 auto;
         background: #fff;
         padding: 1.5rem 2rem;
@@ -62,7 +62,39 @@
         font-size:.9rem;
       }
       .row input.key {
-        max-width: 40%;
+        max-width: 32%;
+      }
+      .row label.flag {
+        display:flex;
+        align-items:center;
+        gap:.25rem;
+        white-space:nowrap;
+        font-size:.85rem;
+        color:#333;
+      }
+      .row label.flag input {
+        flex:0 0 auto;
+        width:auto;
+        padding:0;
+      }
+      .storage-row {
+        align-items:center;
+      }
+      .mb-05 {
+        margin-bottom:.5rem;
+      }
+      .mb-1 {
+        margin-bottom:1rem;
+      }
+      .mt-1 {
+        margin-top:1rem;
+      }
+      .storage-row select {
+        flex:1 1 auto;
+        padding:.35rem .5rem;
+        border:1px solid #ccc;
+        border-radius:4px;
+        font-size:.9rem;
       }
       .row button.remove {
         border:none;
@@ -114,17 +146,45 @@
     <div class="wrap">
       <h1>Encrypted variables</h1>
       <p class="tip">
-        Here you can edit <code>KEY = value</code> pairs, which will be saved in <code>config.enc</code> (encrypted) or <code>config.json</code> (open JSON).
+        Here you can edit <code>KEY = value</code> pairs, which will be saved in the configured encrypted storage.
         The values are hidden (type <code>password</code>), but can be changed.
       </p>
       <?= ($vars['error'] ?? '') ?><?= ($vars['success'] ?? '') ?>
       <form method="post" autocomplete="off">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($vars['csrfToken'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+        <?php if (!empty($vars['studioMode']) || !empty($vars['canMigrateStudio'])) { ?>
+          <div class="row storage-row mb-05">
+            <input class="key" type="text" value="File protection" readonly autocomplete="off">
+            <select name="studio_encryption_mode">
+              <?php
+                $currentMode = (string)($vars['studioEncryptionMode'] ?? 'WholeJson');
+                $modes = [
+                  'Open' => 'Open',
+                  'SecretsOnly' => 'Secrets only',
+                  'AllValues' => 'All values',
+                  'WholeJson' => 'Masked / whole vault',
+                ];
+                foreach ($modes as $modeValue => $modeLabel) {
+              ?>
+                <option value="<?= htmlspecialchars($modeValue, ENT_QUOTES, 'UTF-8') ?>" <?= $currentMode === $modeValue ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($modeLabel, ENT_QUOTES, 'UTF-8') ?>
+                </option>
+              <?php } ?>
+            </select>
+          </div>
+          <div class="row mb-1">
+            <input class="key" type="text" value="Studio vault password" readonly autocomplete="off">
+            <input class="value" name="studio_password" type="password" placeholder="required once, then cached locally" autocomplete="off">
+          </div>
+        <?php } ?>
         <div id="rows" class="rows">
         <?php if (isset($vars['prefill'])) foreach ($vars['prefill'] as $row) { ?>
           <div class="row">
             <input class="key"   name="cfg_key[]"   type="text"      placeholder="KEY"   value="<?= htmlspecialchars((string)($row['key']   ?? ''), ENT_QUOTES, 'UTF-8') ?>" autocomplete="off" spellcheck="false">
             <input class="value" name="cfg_value[]" type="password"  placeholder="value" value="<?= htmlspecialchars((string)($row['value'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" autocomplete="off" spellcheck="false">
-            <button type="button" class="remove" onclick="removeRow(this)" aria-label="Remove row">&times;</button>
+            <input class="secret-value" name="cfg_secret[]" type="hidden" value="<?= !empty($row['secret']) ? '1' : '0' ?>">
+            <label class="flag"><input type="checkbox" class="flag-checkbox" data-target="secret-value" <?= !empty($row['secret']) ? 'checked' : '' ?>> Secret</label>
+            <button type="button" class="remove" aria-label="Remove row">&times;</button>
           </div>
         <?php } ?>
         </div>
@@ -132,32 +192,35 @@
         <div class="controls">
           <input type="hidden" name="save_mode" id="save_mode" value="enc">
           
-          <button type="button" class="btn-secondary" onclick="addRow()">+ Add a row</button>
-          <button type="button" class="btn-secondary" onclick="toggleVisibility()">Show/hide values</button>
+          <button type="button" class="btn-secondary" id="add_row">+ Add a row</button>
+          <button type="button" class="btn-secondary" id="toggle_visibility">Show/hide values</button>
           
           <!-- Selecting a JSON file to import -->
           <input type="file" id="json_file" accept="application/json" class="btn-secondary">
-          <button type="button" class="btn-secondary" onclick="loadJsonIntoForm()">
+          <button type="button" class="btn-secondary" id="load_json">
             Load JSON into form
           </button>
           
           <!-- save to encrypted config.enc -->
-          <button type="submit" onclick="document.getElementById('save_mode').value='enc'">
+          <button type="submit" data-save-mode="enc">
             Save (encrypted)
           </button>
+
+          <?php if (!empty($vars['canMigrateStudio'])) { ?>
+            <button type="submit" data-save-mode="migrate_studio">
+              Create Studio file
+            </button>
+          <?php } ?>
           
           <!-- Download config.json to your browser -->
-          <button type="submit" onclick="document.getElementById('save_mode').value='json_download'">
+          <button type="submit" data-save-mode="json_download">
             Download JSON
           </button>
         </div>
       </form>
       
-      <p class="tip" style="margin-top:1rem;">
-        Once saved, the configuration file can be read in code by decrypting <code>config.enc</code> and using
-        the values from <code>\$_SESSION['ENV']</code> or from your wrapper function. The file
-        <code>config.json</code> stores the same data in cleartext—use it only in a
-        secure environment.
+      <p class="tip mt-1">
+        Once saved, the configuration file can be read in code through <code>\$_SESSION['ENV']</code>, <code>$SRVENV</code>, or from the wrapper method.
       </p>
     </div>
     
@@ -165,11 +228,13 @@
       <div class="row">
         <input class="key"   name="cfg_key[]"   type="text"     placeholder="KEY"   autocomplete="off" spellcheck="false">
         <input class="value" name="cfg_value[]" type="password" placeholder="value" autocomplete="off" spellcheck="false">
-        <button type="button" class="remove" onclick="removeRow(this)" aria-label="Remove row">&times;</button>
+        <input class="secret-value" name="cfg_secret[]" type="hidden" value="1">
+        <label class="flag"><input type="checkbox" class="flag-checkbox" data-target="secret-value" checked> Secret</label>
+        <button type="button" class="remove" aria-label="Remove row">&times;</button>
       </div>
     </template>
     
-    <script>
+    <script nonce="<?= htmlspecialchars((string)($vars['cspNonce'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
       function addRow() {
         const tpl  = document.getElementById('row-template');
         const rows = document.getElementById('rows');
@@ -185,6 +250,30 @@
           row.remove();
         }
       }
+
+      function syncFlag(input, className) {
+        const row = input.closest('.row');
+        const hidden = row ? row.querySelector('.' + className) : null;
+        if (hidden) hidden.value = input.checked ? '1' : '0';
+      }
+
+      document.getElementById('add_row')?.addEventListener('click', addRow);
+      document.getElementById('toggle_visibility')?.addEventListener('click', toggleVisibility);
+      document.getElementById('load_json')?.addEventListener('click', loadJsonIntoForm);
+      document.querySelectorAll('[data-save-mode]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const saveMode = document.getElementById('save_mode');
+          if (saveMode) saveMode.value = button.dataset.saveMode || 'enc';
+        });
+      });
+      document.getElementById('rows')?.addEventListener('click', (event) => {
+        const removeButton = event.target.closest('button.remove');
+        if (removeButton) removeRow(removeButton);
+      });
+      document.getElementById('rows')?.addEventListener('change', (event) => {
+        const input = event.target.closest('.flag-checkbox');
+        if (input) syncFlag(input, input.dataset.target || '');
+      });
     
       function toggleVisibility() {
         const inputs = document.querySelectorAll('input.value');
@@ -248,7 +337,23 @@
               inputVal.autocomplete = 'off';
               inputVal.spellcheck = false;
               inputVal.value = value !== null && value !== undefined ? String(value) : '';
-              
+
+              const secretHidden = document.createElement('input');
+              secretHidden.className = 'secret-value';
+              secretHidden.name = 'cfg_secret[]';
+              secretHidden.type = 'hidden';
+              secretHidden.value = '1';
+
+              const secretLabel = document.createElement('label');
+              secretLabel.className = 'flag';
+              const secretCheck = document.createElement('input');
+              secretCheck.type = 'checkbox';
+              secretCheck.className = 'flag-checkbox';
+              secretCheck.dataset.target = 'secret-value';
+              secretCheck.checked = true;
+              secretLabel.appendChild(secretCheck);
+              secretLabel.appendChild(document.createTextNode(' Secret'));
+
               const btnRemove = document.createElement('button');
               btnRemove.type = 'button';
               btnRemove.className = 'remove';
@@ -260,6 +365,8 @@
               
               row.appendChild(inputKey);
               row.appendChild(inputVal);
+              row.appendChild(secretHidden);
+              row.appendChild(secretLabel);
               row.appendChild(btnRemove);
               
               rowsContainer.appendChild(row);
